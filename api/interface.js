@@ -40,7 +40,7 @@ router.post('/thepalestink/login',(req,res) => {
         user_password: req.query.user_password
     };
     users.find(user, function(err, doc){
-        if(doc){
+        if(doc.length){
             /**创建token*/
             let token = jwt.sign(user, 'app.get(superSecret)', {
                 expiresIn: 60*60*24 /**设置过期时间*/
@@ -91,6 +91,10 @@ router.post('/thepalestink/register',(req,res) => {
     }
     if(!req.query.user_password) {
         res.json({status: 0, msg: '请输入密码'});
+        return;
+    }
+    if( req.query.user_password.length != 6) {
+        res.json({status: 0, msg: '请输入6位数的密码'});
         return;
     }
     if(req.query.user_password != req.query.user_too_password) {

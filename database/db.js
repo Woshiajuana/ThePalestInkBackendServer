@@ -32,7 +32,10 @@ const articleScheMa = new Schema({
  * 但是此模式还未和users集合有关联
  * */
 const userScheMa = new Schema({
-    user_name: String,
+    user_name: {
+        type: String,
+        unique: true
+    },
     user_password: String
 },{
     versionKey: false
