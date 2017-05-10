@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 /**引入数据模型*/
 const user_module = require('../models/user');
 const balance_module = require('../models/balance');
+const code_module = require('../models/code');
 /**引入express包*/
 const express = require('express');
 /**创建路由*/
@@ -72,7 +73,6 @@ router.get('/thepalestink/checkUserRepeat',(req,res) => {
     });
 });
 /**发送邮件*/
-var code_value = NaN;
 router.get('/thepalestink/sendEmail',(req,res) => {
     let user_email = req.query.user_email;
     if(!req.query.user_email) {
@@ -87,12 +87,20 @@ router.get('/thepalestink/sendEmail',(req,res) => {
     for(var i=0; i<6; i++) {
         random_num += Math.floor(Math.random()*10);
     }
-    sendMail(user_email,'浪笔头注册验证', '您的验证码是：' + code_value,function () {
-        code_value = random_num;
-        setTimeout(function () {
-            code_value = NaN;
-        },60*2*1000);
-        res.json({ status: 1 });
+    sendMail(user_email,'浪笔头注册验证', '您的验证码是：' + random_num,function () {
+        /**存储用户验证码*/
+        var code = {
+            user_email: user_email,
+            user_code: random_num,
+            user_code_overdue: Date.parse(new Date()) + (60*2*1000)
+        };
+        code_module.update(code, function(err, doc){
+            if(err){
+                res.json({status: 0});
+            }else {
+                res.json({status: 1});
+            }
+        });
     },function () {
         res.json({ status: 0 });
     });
@@ -123,23 +131,35 @@ router.post('/thepalestink/register',(req,res) => {
         res.json({status: 0, msg: '两次密码不一致'});
         return;
     }
-    if( code_value != req.query.user_code) {
-        res.json({status: 0, msg: '验证码错误'});
-        return;
-    }
-    let user = {
-        user_name: req.query.user_name,
+    var code = {
         user_email: req.query.user_email,
-        user_password: req.query.user_password,
-        user_register_date: new Date()
+        user_code: req.query.user_code
     };
-    user_module.create(user, function(err, doc){
-        if(err){
-            res.json({status: 0, msg: '注册失败'});
-        }else {
-            res.json({status: 1, msg: '注册成功'});
+    code_module.find(code, function(err, doc){
+        if(doc.length){
+            if (Date.parse(new Date()) > doc[0].user_code_overdue){
+                res.json({status: 0, msg: '验证码失效，请重新验证'});
+                return;
+            }
+            let user = {
+                user_name: req.query.user_name,
+                user_email: req.query.user_email,
+                user_password: req.query.user_password,
+                user_register_date: new Date()
+            };
+            user_module.create(user, function(err, doc){
+                if(err){
+                    res.json({status: 0, msg: '注册失败'});
+                }else {
+                    res.json({status: 1, msg: '注册成功'});
+                }
+            });
+        }else{
+            res.json({status: 0, msg: '验证码错误'});
+            return;
         }
     });
+
 });
 
 
