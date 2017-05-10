@@ -14,6 +14,8 @@ const express = require('express');
 const router = express.Router();
 /**验证token的中间键*/
 const check_api_token = require('./check_api_token');
+/**发送邮件的插件*/
+const sendMail = require('../lib/mail');
 
 
 /**创建接口*/
@@ -68,6 +70,32 @@ router.get('/thepalestink/checkUserRepeat',(req,res) => {
         }
     });
 });
+/**发送邮件*/
+var code_value = NaN;
+router.get('/thepalestink/sendEmail',(req,res) => {
+    let user_email = req.query.user_email;
+    if(!req.query.user_email) {
+        res.json({status: 0, msg: '请输入邮箱'});
+        return;
+    }
+    if(!(/^(\w)+(\.\w+)*@(\w)+((\.\w+)+)$/).test(req.query.user_email)) {
+        res.json({status: 0, msg: '邮箱格式不正确'});
+        return;
+    }
+    var random_num = '';
+    for(var i=0; i<6; i++) {
+        random_num += Math.floor(Math.random()*10);
+    }
+    sendMail(user_email,'浪笔头注册验证', '您的验证码是：' + code_value,function () {
+        code_value = random_num;
+        setTimeout(function () {
+            code_value = NaN;
+        },60*2*1000);
+        res.json({ status: 1 });
+    },function () {
+        res.json({ status: 0 });
+    });
+});
 /**用户注册*/
 router.post('/thepalestink/register',(req,res) => {
     if(!req.query.user_name) {
@@ -94,6 +122,10 @@ router.post('/thepalestink/register',(req,res) => {
         res.json({status: 0, msg: '两次密码不一致'});
         return;
     }
+    if( code_value != req.query.user_code) {
+        res.json({status: 0, msg: '验证码错误'});
+        return;
+    }
     let user = {
         user_name: req.query.user_name,
         user_email: req.query.user_email,
@@ -108,7 +140,6 @@ router.post('/thepalestink/register',(req,res) => {
         }
     });
 });
-
 
 
 /**查询用户总金额*/
