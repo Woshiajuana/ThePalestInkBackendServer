@@ -8,6 +8,7 @@ const dbHelper = require('./page-query');
 const jwt = require('jsonwebtoken');
 /**引入数据模型*/
 const user_module = require('../models/user');
+const balance_module = require('../models/balance');
 /**引入express包*/
 const express = require('express');
 /**创建路由*/
