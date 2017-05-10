@@ -168,17 +168,29 @@ router.get('/thepalestink/fetchTotalBalance',check_api_token,(req,res) => {
     let user = {
         user_name: req.query.user_name
     };
-
-    users.count(user, function(err, doc){
-        if(doc){
-            res.json({
-                status: 0,
-                msg: '帐号已存在'
-            });
-        }else{
+    user_module.find(user, function(err, doc){
+        if(doc.length){
             res.json({
                 status: 1,
-                msg: '帐号可以注册'
+                msg: '获取余额成功',
+                data: {
+                    balance: doc[0].user_balance
+                }
+            });
+        }else if(!err){
+            /**用户还没有存入*/
+            res.json({
+                status: 1,
+                msg: '获取余额成功',
+                data: {
+                    balance: 0
+                }
+            });
+        }else {
+            /**获取信息异常*/
+            res.json({
+                status: 2,
+                msg: '获取信息异常'
             });
         }
     });
