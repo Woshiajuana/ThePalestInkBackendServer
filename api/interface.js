@@ -299,15 +299,61 @@ function countBalance (user_name,bill) {
 /**获取账单*/
 router.get('/thepalestink/fetchBill',check_api_token,(req,res) => {
     var user_name = req.query.user_name;
+    var query_condition = req.query.query_condition && JSON.parse(req.query.query_condition);
     bill_module.find({
         user_name: user_name
     },(err,doc) => {
         if(doc.length){
+            var bill_arr = doc[0].bills;
+            if( query_condition ){
+                var year_value = query_condition.year_value;
+                var month_value = query_condition.month_value;
+                var day_value = query_condition.day_value;
+                var check_value_arr = query_condition.check_value_arr;
+                if(year_value){
+                    var arr = [];
+                    bill_arr.forEach((item,index) => {
+                        if(item.bill_date.split('-')[0] == year_value){
+                            arr.push(item);
+                        }
+                    });
+                    bill_arr = arr;
+                }
+                if(month_value){
+                    var arr = [];
+                    bill_arr.forEach((item,index) => {
+                        if(item.bill_date.split('-')[1] == month_value){
+                            arr.push(item);
+                        }
+                    });
+                    bill_arr = arr;
+                }
+                if(day_value){
+                    var arr = [];
+                    bill_arr.forEach((item,index) => {
+                        if(item.bill_date.split('-')[2] == day_value){
+                            arr.push(item);
+                        }
+                    });
+                    bill_arr = arr;
+                }
+                if(check_value_arr.length){
+                    var arr = [];
+                    check_value_arr.forEach((item,index) => {
+                        bill_arr.forEach((it,i) => {
+                            if(it.bill_type_number == item){
+                                arr.push(it);
+                            }
+                        });
+                    });
+                    bill_arr = arr;
+                }
+            }
             res.json({
                 status: 1,
                 msg: '获取账单成功',
                 data: {
-                    bills: doc[0].bills
+                    bills: bill_arr
                 }
             });
         } else if(!err) {
