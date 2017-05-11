@@ -327,6 +327,77 @@ router.get('/thepalestink/fetchBill',check_api_token,(req,res) => {
     });
 });
 
+/**删除账单*/
+router.get('/thepalestink/removeBill',check_api_token,(req,res) => {
+    var user_name = req.query.user_name,
+        bill = JSON.parse(req.query.bill);
+    bill_module.find({
+        user_name: user_name
+    },(err,doc) => {
+        if(doc.length){
+            var bill_arr = doc[0].bills;
+            bill_arr.forEach( (item,index) => {
+                if( item.bill_id == bill.bill_id ) {
+                    bill_arr.splice(index, 1);
+                    return;
+                }
+            });
+            bill_module.update({
+                user_name: user_name,
+                bills: bill_arr
+            },(err,doc) => {
+                if(!err) {
+                    balance_module.find({
+                        user_name: user_name
+                    },(err,doc) => {
+                        if(doc.length){
+                            var user_balance = doc[0].user_balance;
+                            if ( bill.bill_consumption_or_earn == 0 ){
+                                /**消费账单*/
+                                user_balance = user_balance + (+bill.bill_sum)
+                            } else {
+                                /**入账账单*/
+                                user_balance = user_balance - (+bill.bill_sum)
+                            }
+                            balance_module.update({
+                                user_name: user_name,
+                                user_balance: user_balance
+                            },(err,doc) => {
+                                if(err){
+                                    res.json({
+                                        status: 0,
+                                        msg: '账单更新失败'
+                                    });
+                                }else{
+                                    res.json({
+                                        status: 1,
+                                        msg: '删除账单成功'
+                                    });
+                                }
+                            });
+                        }else{
+                            res.json({
+                                status: 0,
+                                msg: '数据异常，账单更新失败'
+                            });
+                        }
+                    });
+                } else {
+                    res.json({
+                        status: 0,
+                        msg: '账单更新失败'
+                    });
+                }
+            })
+        } else {
+            res.json({
+                status: 0,
+                msg: '数据异常，账单更新失败'
+            });
+        }
+    });
+});
+
 
 
 //
