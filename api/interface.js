@@ -161,6 +161,54 @@ router.post('/thepalestink/register',(req,res) => {
     });
 
 });
+/**用户修改密码*/
+router.get('/thepalestink/modifyPassword',(req,res) => {
+    var query = req.query,
+        user_name = query.user_name,
+        old_password = query.old_password,
+        password_value = query.password_value,
+        too_password_value = query.too_password_value;
+    if (!user_name) {
+        res.json({ status: -1 });
+        return;
+    }
+    if (!old_password) {
+        res.json({ status: 0,msg: '请输入旧密码'});
+        return;
+    }
+    if (!password_value) {
+        res.json({ status: 0,msg: '请输入新密码'});
+        return;
+    }
+    if (too_password_value != password_value) {
+        res.json({ status: 0,msg: '两次密码不一致'});
+        return;
+    }
+    user_module.find({
+        user_name: user_name
+    }, (err, doc) => {
+        if(doc.length){
+            var password = doc[0].user_password;
+            if(password == old_password) {
+                user_module.update({
+                    user_name: user_name,
+                    user_password: password_value
+                },(e,d) => {
+                    if (!e){
+                        res.json({ status: 1,msg: '修改成功，请重新登录'});
+                    } else {
+                        res.json({ status: 0,msg: '修改失败'});
+                    }
+                });
+            }else{
+                res.json({ status: 0,msg: '旧密码错误'});
+            }
+
+        }else{
+            res.json({ status: -1 });
+        }
+    });
+});
 
 /**查询用户总金额*/
 router.get('/thepalestink/fetchTotalBalance',check_api_token,(req,res) => {
