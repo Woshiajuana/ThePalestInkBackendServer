@@ -209,7 +209,30 @@ router.get('/thepalestink/modifyPassword',(req,res) => {
         }
     });
 });
-
+/**用户找回密码*/
+router.get('/thepalestink/retrievePassword',(req,res) => {
+    var query = req.query,
+        user_email = query.email_value;
+    if (!user_email) {
+        res.json({status: 0, msg: '请输入邮箱'});
+        return;
+    }
+    user_module.find({
+        user_email: user_email
+    }, (err, doc) => {
+        if(doc.length){
+            var password = doc[0].user_password;
+            var name = doc[0].user_name;
+            sendMail(user_email,'浪笔头找回密码', '您的用户名是：'+ name +'您的密码是：' + password,function () {
+                res.json({status: 1,msg:'找回密码成功，请登录邮箱查看'});
+            },function () {
+                res.json({ status: 0, msg: '找回密码失败'});
+            });
+        }else{
+            res.json({ status: 0, msg: '该邮箱还未注册'});
+        }
+    });
+});
 /**查询用户总金额*/
 router.get('/thepalestink/fetchTotalBalance',check_api_token,(req,res) => {
     /**查询*/
