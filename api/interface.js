@@ -10,6 +10,7 @@ const jwt = require('jsonwebtoken');
 const user_module = require('../models/user');
 const balance_module = require('../models/balance');
 const code_module = require('../models/code');
+const bill_module = require('../models/bill');
 /**引入express包*/
 const express = require('express');
 /**创建路由*/
@@ -18,7 +19,6 @@ const router = express.Router();
 const check_api_token = require('./check_api_token');
 /**发送邮件的插件*/
 const sendMail = require('../lib/mail');
-
 
 /**创建接口*/
 /**用户登录*/
@@ -162,14 +162,13 @@ router.post('/thepalestink/register',(req,res) => {
 
 });
 
-
 /**查询用户总金额*/
 router.get('/thepalestink/fetchTotalBalance',check_api_token,(req,res) => {
-    let user = {
+    /**查询*/
+    balance_module.find({
         user_name: req.query.user_name
-    };
-    user_module.find(user, function(err, doc){
-        if(doc.length){
+    },(err,doc) =>{
+        if (doc.length){
             res.json({
                 status: 1,
                 msg: '获取余额成功',
@@ -177,13 +176,77 @@ router.get('/thepalestink/fetchTotalBalance',check_api_token,(req,res) => {
                     balance: doc[0].user_balance
                 }
             });
-        }else if(!err){
+        } else if(!err) {
             /**用户还没有存入*/
             res.json({
                 status: 1,
                 msg: '获取余额成功',
                 data: {
                     balance: 0
+                }
+            });
+        } else {
+            /**获取信息异常*/
+            res.json({
+                status: 2,
+                msg: '获取信息异常'
+            });
+        }
+    });
+});
+
+/**生成账单*/
+router.get('/thepalestink/addBill',check_api_token,(req,res) => {
+    var query = req.query;
+    let bill = {
+        bill_id: Date.parse(new Date()),
+        bill_sum: query.sum_value,
+        bill_date: query.date_value,
+        bill_time: query.time_value,
+        bill_remarks: query.remarks_value,
+        bill_account_type: query.account_type,
+        bill_type_number: query.type_number,
+        bill_consumption_or_earn: query.consumption_or_earn
+    };
+    bill_module.find({
+        user_name: query.user_name
+    }, function(err, doc){
+        if(doc.length){
+            doc[0].bills.push(bill);
+            bill_module.update({
+                user_name:query.user_name,
+                bills: doc[0].bills
+            }, (e,d) => {
+                if (e){
+                    res.json({
+                        status: 0,
+                        msg: '账单录入失败'
+                    });
+                } else {
+                    res.json({
+                        status: 1,
+                        msg: '账单录入成功'
+                    });
+                    countBalance(query.user_name,bill)
+                }
+            });
+        }else if(!err){
+            /**用户还没有账单信息*/
+            bill_module.create({
+                user_name:query.user_name,
+                bills: [bill]
+            }, (err,doc) => {
+                if (err){
+                    res.json({
+                        status: 0,
+                        msg: '账单录入失败'
+                    });
+                } else {
+                    res.json({
+                        status: 1,
+                        msg: '账单录入成功'
+                    });
+                    countBalance(query.user_name,bill)
                 }
             });
         }else {
@@ -195,7 +258,74 @@ router.get('/thepalestink/fetchTotalBalance',check_api_token,(req,res) => {
         }
     });
 });
+/**计算用户余额*/
+function countBalance (user_name,bill) {
+    /**查询*/
+    balance_module.find({
+        user_name: user_name
+    },(err,doc) =>{
+        if (doc.length){
+            var user_balance = doc[0].user_balance;
+            if (bill.bill_consumption_or_earn == 1) {
+                user_balance = user_balance + (+bill.bill_sum);
+            } else {
+                user_balance = user_balance - (+bill.bill_sum);
+            }
+            balance_module.update({
+                user_name: user_name,
+                user_balance: user_balance
+            },(err,doc) =>{
+                if( err ) return false;
+                else return true;
+            });
+        } else if(!err) {
+            var user_balance = 0;
+            if (bill.bill_consumption_or_earn == 1) {
+                user_balance = user_balance + (+bill.bill_sum);
+            } else {
+                user_balance = user_balance - (+bill.bill_sum);
+            }
+            balance_module.create({
+                user_name: user_name,
+                user_balance: user_balance
+            },(err,doc) =>{
+                if( err ) return false;
+                else return true;
+            });
+        }
+    });
+}
 
+/**获取账单*/
+router.get('/thepalestink/fetchBill',check_api_token,(req,res) => {
+    var user_name = req.query.user_name;
+    bill_module.find({
+        user_name: user_name
+    },(err,doc) => {
+        if(doc.length){
+            res.json({
+                status: 1,
+                msg: '获取账单成功',
+                data: {
+                    bills: doc[0].bills
+                }
+            });
+        } else if(!err) {
+            res.json({
+                status: 1,
+                msg: '获取账单成功',
+                data: {
+                    bills: []
+                }
+            });
+        } else {
+            res.json({
+                status: 2,
+                msg: '获取数据异常'
+            });
+        }
+    });
+});
 
 
 
